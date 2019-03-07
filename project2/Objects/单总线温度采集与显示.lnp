@@ -1,0 +1,4 @@
+".\Objects\main.obj",
+".\Objects\temp.obj" 
+TO ".\Objects\单总线温度采集与显示" 
+PRINT(".\Listings\单总线温度采集与显示.m51") RAMSIZE(256) 

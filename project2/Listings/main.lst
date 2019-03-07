@@ -1,0 +1,136 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              11/14/2018 16:30:15 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1                      /**************************************************************************************
+   2          *                 DS18B20温度传感器实验                         *
+   3          实现现象：下载程序后，在温度传感器接口处，按照丝印方向插好温度传感器，数码管就会显示
+   4                检测的温度值，
+   5          注意事项：                                          
+   6          ***************************************************************************************/
+   7          
+   8          #include "reg52.h"       //此文件中定义了单片机的一些特殊功能寄存器
+   9          #include"temp.h"  
+  10          
+  11          typedef unsigned int u16;   //对数据类型进行声明定义
+  12          typedef unsigned char u8;
+  13          
+  14          sbit LSA=P2^2;
+  15          sbit LSB=P2^3;
+  16          sbit LSC=P2^4;
+  17          
+  18          char num=0;
+  19          u8 DisplayData[8];
+  20          u8 code smgduan[10]={0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f};
+  21          
+  22          /*******************************************************************************
+  23          * 函 数 名         : datapros()
+  24          * 函数功能         : 温度读取处理转换函数
+  25          * 输    入         : temp
+  26          * 输    出         : 无
+  27          *******************************************************************************/
+  28          
+  29          void datapros(int temp)    
+  30          {
+  31   1        float tp;  
+  32   1        if(temp < 0)        //当温度值为负数
+  33   1          {
+  34   2          DisplayData[0] = 0x40;    //   -
+  35   2          //因为读取的温度是实际温度的补码，所以减1，再取反求出原码
+  36   2          temp=temp-1;
+  37   2          temp=~temp;
+  38   2          tp=temp;
+  39   2          temp=tp*0.0625*100+0.5; 
+  40   2          //留两个小数点就*100，+0.5是四舍五入，因为C语言浮点数转换为整型的时候把小数点
+  41   2          //后面的数自动去掉，不管是否大于0.5，而+0.5之后大于0.5的就是进1了，小于0.5的就
+  42   2          //算加上0.5，还是在小数点后面。
+  43   2       
+  44   2          }
+  45   1        else
+  46   1          {     
+  47   2          DisplayData[0] = 0x00;
+  48   2          tp=temp;//因为数据处理有小数点所以将温度赋给一个浮点型变量
+  49   2          //如果温度是正的那么，那么正数的原码就是补码它本身
+  50   2          temp=tp*0.0625*100+0.5; 
+  51   2          //留两个小数点就*100，+0.5是四舍五入，因为C语言浮点数转换为整型的时候把小数点
+  52   2          //后面的数自动去掉，不管是否大于0.5，而+0.5之后大于0.5的就是进1了，小于0.5的就
+  53   2          //算加上0.5，还是在小数点后面。
+  54   2        }
+C51 COMPILER V9.56.0.0   MAIN                                                              11/14/2018 16:30:15 PAGE 2   
+
+  55   1        DisplayData[1] = smgduan[temp / 10000];
+  56   1        DisplayData[2] = smgduan[temp % 10000 / 1000];
+  57   1        DisplayData[3] = smgduan[temp % 1000 / 100] | 0x80;
+  58   1        DisplayData[4] = smgduan[temp % 100 / 10];
+  59   1        DisplayData[5] = smgduan[temp % 10];
+  60   1      }
+  61          
+  62          /*******************************************************************************
+  63          * 函数名         :DigDisplay()
+  64          * 函数功能       :数码管显示函数
+  65          * 输入           : 无
+  66          * 输出           : 无
+  67          *******************************************************************************/
+  68          void DigDisplay()
+  69          {
+  70   1        u8 i;
+  71   1        for(i=0;i<6;i++)
+  72   1        {
+  73   2          switch(i)  //位选，选择点亮的数码管，
+  74   2          {
+  75   3            case(0):
+  76   3              LSA=0;LSB=0;LSC=0; break;//显示第0位
+  77   3            case(1):
+  78   3              LSA=1;LSB=0;LSC=0; break;//显示第1位
+  79   3            case(2):
+  80   3              LSA=0;LSB=1;LSC=0; break;//显示第2位
+  81   3            case(3):
+  82   3              LSA=1;LSB=1;LSC=0; break;//显示第3位
+  83   3            case(4):
+  84   3              LSA=0;LSB=0;LSC=1; break;//显示第4位
+  85   3            case(5):
+  86   3              LSA=1;LSB=0;LSC=1; break;//显示第5位  
+  87   3          }
+  88   2          P0=DisplayData[5-i];//发送数据
+  89   2          delay(50); //间隔一段时间扫描 
+  90   2          P0=0x00;//消隐
+  91   2        }   
+  92   1      }
+  93          
+  94          /*******************************************************************************
+  95          * 函 数 名       : main
+  96          * 函数功能       : 主函数
+  97          * 输    入       : 无
+  98          * 输    出       : 无
+  99          *******************************************************************************/
+ 100          void main()
+ 101          { 
+ 102   1        Ds18b20SetAlarm(30, 0x00);
+ 103   1        while(1)
+ 104   1        {
+ 105   2          datapros(Ds18b20ReadTemp());
+ 106   2          DigDisplay();
+ 107   2        }   
+ 108   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    357    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      9       5
+C51 COMPILER V9.56.0.0   MAIN                                                              11/14/2018 16:30:15 PAGE 3   
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
