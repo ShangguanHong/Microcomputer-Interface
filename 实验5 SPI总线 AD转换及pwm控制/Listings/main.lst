@@ -1,0 +1,137 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              11/27/2018 18:39:26 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "reg52.h"       //此文件中定义了单片机的一些特殊功能寄存器
+   2          #include "XPT2046.h"  
+   3          
+   4          typedef unsigned int u16;
+   5          typedef unsigned char u8;
+   6          
+   7          sbit LSA=P2^2;
+   8          sbit LSB=P2^3;
+   9          sbit LSC=P2^4;
+  10          sbit LED=P2^0;
+  11          
+  12          u8 DisplayData[8];
+  13          u8 code smgduan[]={0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f};
+  14          u16 cnt, temp, step = 41, lightTime, counter;
+  15          
+  16          /*******************************************************************************
+  17          * 函 数 名         : delay
+  18          * 函数功能       : 延时函数，i=1时，大约延时10us
+  19          *******************************************************************************/
+  20          void delay(u16 i)
+  21          {
+  22   1        while(i--); 
+  23   1      }
+  24          
+  25          /*******************************************************************************
+  26          * 函数名         :readData()
+  27          * 函数功能     :数据处理函数
+  28          * 输入           : 无
+  29          * 输出           : 无
+  30          *******************************************************************************/
+  31          void readData()
+  32          {
+  33   1        if(cnt == 25) 
+  34   1        {
+  35   2          cnt = 0;
+  36   2          temp = Read_AD_Data(0x94);    // 电位器
+  37   2          DisplayData[0]=smgduan[temp/1000];//千位
+  38   2          DisplayData[1]=smgduan[temp%1000/100];//百位
+  39   2          DisplayData[2]=smgduan[temp%1000%100/10];//十位
+  40   2          DisplayData[3]=smgduan[temp%1000%100%10];//个位   
+  41   2          lightTime = temp / step;  // 设置亮灯的时间
+  42   2        }
+  43   1        cnt ++;
+  44   1      }
+  45          
+  46          /*******************************************************************************
+  47          * 函数名         :DigDisplay()
+  48          * 函数功能     :数码管显示函数
+  49          * 输入           : 无
+  50          * 输出           : 无
+  51          *******************************************************************************/
+  52          void DigDisplay()
+  53          {
+  54   1        int i;
+C51 COMPILER V9.56.0.0   MAIN                                                              11/27/2018 18:39:26 PAGE 2   
+
+  55   1        for(i=0;i<4;i++)
+  56   1        {
+  57   2          switch(i)  //位选，选择点亮的数码管，
+  58   2          {
+  59   3            case(0):
+  60   3              LSA=0;LSB=0;LSC=0; break;//显示第0位
+  61   3            case(1):
+  62   3              LSA=1;LSB=0;LSC=0; break;//显示第1位
+  63   3            case(2):
+  64   3              LSA=0;LSB=1;LSC=0; break;//显示第2位
+  65   3            case(3):
+  66   3              LSA=1;LSB=1;LSC=0; break;//显示第3位
+  67   3          }
+  68   2          P0=DisplayData[3-i];//发送数据
+  69   2          delay(100); // 延时
+  70   2          P0=0x00;//消隐
+  71   2        }   
+  72   1      }
+  73          
+  74          /*******************************************************************************
+  75          * 函 数 名       : timer
+  76          * 函数功能       : 中断函数
+  77          * 输    入       : 无
+  78          * 输    出       : 无
+  79          *******************************************************************************/
+  80          void timer() interrupt 1 {
+  81   1        counter ++;         
+  82   1        if(counter >= 100) {   //重置counter
+  83   2          counter = 1;
+  84   2        }
+  85   1        if(counter <= lightTime) {  //在1~lightTime范围内让灯亮
+  86   2          LED = 0;
+  87   2        } else {  //否则灯灭
+  88   2          LED = 1;
+  89   2        }
+  90   1      }
+  91          
+  92          /*******************************************************************************
+  93          * 函 数 名       : main
+  94          * 函数功能       : 主函数
+  95          * 输    入       : 无
+  96          * 输    出       : 无
+  97          *******************************************************************************/
+  98          void main() {
+  99   1        TMOD = 0x02; // 开启中断方式2
+ 100   1        TH0 = 0xa0; // 0.1us
+ 101   1        TL0 = 0xa0;
+ 102   1        TR0 = 1;
+ 103   1        ET0 = 1;
+ 104   1        EA = 1;
+ 105   1        while(1) {
+ 106   2          readData();   // 数据处理
+ 107   2          DigDisplay();   //数码管显示
+ 108   2        }
+ 109   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    331    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.56.0.0   MAIN                                                              11/27/2018 18:39:26 PAGE 3   
+
+   DATA SIZE        =     18    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

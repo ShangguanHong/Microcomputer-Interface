@@ -1,0 +1,104 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              12/11/2018 12:17:53 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "reg52.h" //此文件中定义了单片机的一些特殊功能寄存器
+   2          #include "nrf24l01.h"
+   3          #include "lcd.h"
+   4          #include "XPT2046.h"
+   5          
+   6          typedef unsigned char u8;
+   7          typedef unsigned int u16;
+   8          
+   9          sbit beep = P1^5;
+  10          uchar DATA[5] = {0}, rx_buf[5] = {0};
+  11          u16 cnt = 0, temp = 0;
+  12          
+  13          int readData()
+  14          {
+  15   1        u16 t, change = 0;
+  16   1        if(cnt == 25) 
+  17   1        {
+  18   2          cnt = 0;
+  19   2          t = Read_AD_Data(0x94);   // 电位器
+  20   2          if(t != temp) {
+  21   3            change = 1;
+  22   3            temp = t;
+  23   3            DATA[0]= temp/1000;//千位
+  24   3            DATA[1]= temp%1000/100;//百位
+  25   3            DATA[2]= temp%1000%100/10;//十位
+  26   3            DATA[3]= temp%1000%100%10;//个位  
+  27   3          } 
+  28   2        }
+  29   1        cnt ++;
+  30   1        return change;
+  31   1      }
+  32          
+  33          uchar NRF24L01_Check(void)
+  34          {
+  35   1        uchar bu[5]={0XA5,0XA5,0XA5,0XA5,0XA5};
+  36   1        uchar bu1[5];
+  37   1        uchar i;     
+  38   1        SPI_Write_Buf(WRITE_REG+TX_ADDR,bu,5);    //写入5个字节的地址.  
+  39   1        SPI_Read_Buf(TX_ADDR,bu1,5);              //读出写入的地址   
+  40   1        for(i=0;i<5;i++)if(bu1[i]!=0XA5)break;             
+  41   1        if(i!=5)return 1;                               //NRF24L01不在位 
+  42   1        return 0;                                   //NRF24L01在位
+  43   1      }
+  44          
+  45          /*******************************************************************************
+  46          * 函 数 名       : main
+  47          * 函数功能       : 主函数
+  48          * 输    入       : 无
+  49          * 输    出       : 无
+  50          *******************************************************************************/
+  51          void main()
+  52          {
+  53   1        LcdInit();
+  54   1        NRF24L01_Config();
+C51 COMPILER V9.56.0.0   MAIN                                                              12/11/2018 12:17:53 PAGE 2   
+
+  55   1        
+  56   1        while(NRF24L01_Check())         //检查不到24l01则报警 
+  57   1        {
+  58   2          beep=0;
+  59   2          Delay1ms(20);
+  60   2          beep=1;
+  61   2          Delay1ms(20);
+  62   2        }
+  63   1        while (1)
+  64   1        {
+  65   2          RX_Mode();    
+  66   2          if(NRF24L01_RxPacket(rx_buf)) {     
+  67   3            LcdWriteCom(0x80);  //设置数据指针起点      
+  68   3            LcdWriteData(rx_buf[0] % 10 + '0');
+  69   3            LcdWriteData(rx_buf[1] % 10 + '0');
+  70   3            LcdWriteData(rx_buf[2] % 10 + '0');
+  71   3            LcdWriteData(rx_buf[3] % 10 + '0');
+  72   3          }
+  73   2          if(readData()) {
+  74   3            TX_Mode();      
+  75   3            NRF24L01_TxPacket(DATA);
+  76   3          }
+  77   2        }
+  78   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    334    ----
+   CONSTANT SIZE    =      5    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     14      12
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

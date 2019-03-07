@@ -1,0 +1,269 @@
+C51 COMPILER V9.56.0.0   NRF24L01                                                          12/11/2018 12:17:53 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE NRF24L01
+OBJECT MODULE PLACED IN .\Objects\nrf24l01.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE nrf24l01.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\
+                    -nrf24l01.lst) TABS(2) OBJECT(.\Objects\nrf24l01.obj)
+
+line level    source
+
+   1          #include "nrf24l01.h"
+   2          uchar TX_ADDRESS[TX_ADR_WIDTH] = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7}; //本地地址
+   3          uchar RX_ADDRESS[RX_ADR_WIDTH] = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7}; //接收地址
+   4          sbit led7 = P1^7;
+   5          
+   6          /*******************************************************************************
+   7          * 函 数 名         : Delay1ms
+   8          * 函数功能         : 延时函数
+   9          * 输    入         : 无
+  10          * 输    出         : 无
+  11          *******************************************************************************/
+  12          
+  13          void Delay1ms(uint y) {
+  14   1        uint x; 
+  15   1        for (; y > 0; y--) {
+  16   2          for (x = 110; x > 0; x--); 
+  17   2        }
+  18   1      }
+  19          /**************************************************
+  20          Function: SPI_RW();
+  21          
+  22          Description:
+  23            Writes one byte to nRF24L01, and return the byte read
+  24            from nRF24L01 during write, according to SPI protocol
+  25          假设下面的8位寄存器装的是待发送的数据10101010，上升沿发送、下降沿接收、高�
+             -��先发送。
+  26          那么第一个上升沿来的时候 数据将会是sdo=1；
+  27          寄存器中的10101010左移一位，后面补入送来的一位未知数x，成了0101010x。
+  28          下降沿到来的时候，sdi上的电平将锁存到寄存器中去，那么这时寄存器=0101010sdi�
+             -�
+  29          这样在 8个时钟脉冲以后，两个寄存器的内容互相交换一次。这样就完成里一个sp
+             -i时序
+  30          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  
+             -*  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+  31          uchar SPI_RW(uchar byte) {
+  32   1        uchar bit_ctr; 
+  33   1        for (bit_ctr = 0; bit_ctr < 8; bit_ctr++) {             // output 8-bit    // 输出 8 位
+  34   2          MOSI = (byte & 0x80); // output 'byte', MSB to MOSI      // 从MOSI脚输出,从高位到低位.当uchar 
+             -最高位为1时逻辑运算为1,输出1.运算为0时输出0
+  35   2          byte = (byte << 1); // shift next bit into MSB..      // 左移1位.将低位向高位转移.
+  36   2          SCK = 1;        // Set SCK high..    // 将SCK脚拉高,
+  37   2          byte |= MISO;       //byte=byte|MISO  capture current MISO bit    // 从MISO 中读出状态位存入uchar�
+             -��.
+  38   2          SCK = 0;        // ..then set SCK low again   // 将SCK脚拉低.发送一位完成.
+  39   2        }
+  40   1        return (byte); // return read byte      // 返回状态位
+  41   1      }
+  42          /**************************************************/
+  43          
+  44          /**************************************************
+  45          Function: SPI_RW_Reg();
+  46          
+  47          Description:
+  48            Writes value 'value' to register 'reg'
+C51 COMPILER V9.56.0.0   NRF24L01                                                          12/11/2018 12:17:53 PAGE 2   
+
+  49          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  
+             -*  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+  50          uchar SPI_RW_Reg(uchar reg, uchar value) {
+  51   1        uchar status; 
+  52   1      
+  53   1        CSN = 0;        // CSN low, init SPI transaction   // CS为低,开始SPI传输
+  54   1        status = SPI_RW(reg); // select register  // 传送命令与地址
+  55   1        SPI_RW(value);      // ..and write value to it..   // 写1 uchar 值
+  56   1        CSN = 1;        // CSN high again    // 完成SPI传输
+  57   1      
+  58   1        return (status); // 返回 status        // return nRF24L01 status byte
+  59   1      }
+  60          /**************************************************/
+  61          
+  62          /**************************************************
+  63          Function: SPI_Read();
+  64          
+  65          Description:
+  66            Read one byte from nRF24L01 register, 'reg'
+  67          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  
+             -*  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+  68          uchar SPI_Read(uchar reg) {
+  69   1        uchar reg_val; 
+  70   1      
+  71   1        CSN = 0;       // CSN low, initialize SPI communication...  // CS为低,开始SPI传输
+  72   1        SPI_RW(reg);     // Select register to read from..  // 设置读地址
+  73   1        reg_val = SPI_RW(0); // ..then read registervalue   // 读数据
+  74   1        CSN = 1;       // CSN high, terminate SPI communication   // 完成SPI传输
+  75   1      
+  76   1        return (reg_val); // return register value  // 返回数据
+  77   1      }
+  78          /**************************************************/
+  79          
+  80          /**************************************************
+  81          Function: SPI_Read_Buf();
+  82          
+  83          Description:
+  84            Reads 'bytes' of bytes from register 'reg'
+  85            Typically used to read RX payload, Rx/Tx address
+  86          /**************************************************/
+  87          uchar SPI_Read_Buf(uchar reg, uchar * pBuf, uchar bytes) {
+  88   1        uchar status, byte_ctr; 
+  89   1      
+  90   1        CSN = 0;        // CS为低,开始SPI传输// Set CSN low, init SPI tranaction
+  91   1        status = SPI_RW(reg); // 传输读接收数据的命令.     // Select register to write to and read statu
+             -s byte
+  92   1      
+  93   1        for (byte_ctr = 0; byte_ctr < bytes; byte_ctr++)
+  94   1          pBuf[byte_ctr] = SPI_RW(0); // 读 1 uchar数据   // Perform SPI_RW to read byte from nRF24L01
+  95   1      
+  96   1        CSN = 1; // 数据传送完成. // Set CSN high again
+  97   1      
+  98   1        return (status); // return nRF24L01 status byte
+  99   1      }
+ 100          /**************************************************/
+ 101          
+ 102          /**************************************************
+ 103          Function: SPI_Write_Buf();
+ 104          
+ 105          Description:
+ 106            Writes contents of buffer '*pBuf' to nRF24L01
+ 107            Typically used to write TX payload, Rx/Tx address
+C51 COMPILER V9.56.0.0   NRF24L01                                                          12/11/2018 12:17:53 PAGE 3   
+
+ 108          /**************************************************/
+ 109          uchar SPI_Write_Buf(uchar reg, uchar * pBuf, uchar bytes) {
+ 110   1        uchar status, byte_ctr; 
+ 111   1      
+ 112   1        CSN = 0;                     // CS为低,开始SPI传输  // Set CSN low, init SPI tranaction
+ 113   1        status = SPI_RW(reg);                // 传输写发送数据的命令.   // Select register to write to and rea
+             -d status byte
+ 114   1        for (byte_ctr = 0; byte_ctr < bytes; byte_ctr++)// 传送发送数据 // then write all byte in buffer(*p
+             -Buf)
+ 115   1          SPI_RW( * pBuf++); 
+ 116   1        CSN = 1;     // 数据传送完成.     // Set CSN high again
+ 117   1        return (status); // return nRF24L01 status byte
+ 118   1      }
+ 119          
+ 120          //配置函数
+ 121          void NRF24L01_Config(void) {
+ 122   1        //initial io
+ 123   1        CE = 0; //芯片使能
+ 124   1        CSN = 1; //SPI禁能
+ 125   1        SCK = 0; //SPI时钟线拉高
+ 126   1        CE = 0; 
+ 127   1        SPI_RW_Reg(WRITE_REG + CONFIG, 0X0F);         //上电模式，使能CRC(2个字节)和RX_DR使能
+ 128   1        SPI_RW_Reg(WRITE_REG + EN_AA, 0X3f);        //频道0自动，ack应答允许
+ 129   1        SPI_RW_Reg(WRITE_REG + EN_RXADDR, 0X3f);      //允许pipe0
+ 130   1        SPI_RW_Reg(WRITE_REG + RF_CH, 0);           //   设置信道工作为2.4GHZ，收发必须一致
+ 131   1        SPI_RW_Reg(WRITE_REG + RF_SETUP, 0x07);         //设置发射速率为1MHZ，发射功率为最大值0dB
+ 132   1        SPI_RW_Reg(WRITE_REG + CONFIG, 0x0e);         // IRQ收发完成中断响应，16位CRC，主发送
+ 133   1        SPI_RW_Reg(WRITE_REG + RX_PW_P0, RX_PLOAD_WIDTH);       //设置接收数据长度，本次设置为5字节
+ 134   1        SPI_Write_Buf(WRITE_REG + TX_ADDR, TX_ADDRESS, TX_ADR_WIDTH);   // 写本地地址
+ 135   1        SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, RX_ADDRESS, RX_ADR_WIDTH); // 写接收端地址0
+ 136   1        SPI_RW_Reg(WRITE_REG + CONFIG, 0x0e);         // IRQ收发完成中断响应，16位CRC，主发送
+ 137   1        CE = 1;                         /////////////
+ 138   1      }
+ 139          
+ 140          /////接收数据
+ 141          uchar NRF24L01_RxPacket(uchar * rx_buf) {
+ 142   1        uchar revale = 0, sta; 
+ 143   1        SPI_RW_Reg(WRITE_REG + CONFIG, 0X0F); 
+ 144   1        CE = 1; 
+ 145   1        Delay1ms(10); 
+ 146   1        sta = SPI_Read(STATUS); 
+ 147   1        if (sta & 0x40) {//RX_DR = 1
+ 148   2          CE = 0; 
+ 149   2          SPI_Read_Buf(RD_RX_PLOAD, rx_buf, RX_PLOAD_WIDTH);
+ 150   2          revale = 1; 
+ 151   2        }
+ 152   1        SPI_RW_Reg(WRITE_REG + STATUS, sta); 
+ 153   1        return revale; 
+ 154   1      }
+ 155          
+ 156          void NRF24L01_TxPacket(uchar * tx_buf) {
+ 157   1        CE = 0;
+ 158   1        SPI_Write_Buf(WR_TX_PLOAD, tx_buf, TX_PLOAD_WIDTH); // Writes data to TX payload
+ 159   1        CE = 1;
+ 160   1        Delay1ms(10);
+ 161   1      }
+ 162          
+ 163          //发送数据
+ 164          /**************************************************/
+ 165          
+ 166          /**************************************************
+ 167          Function: RX_Mode();
+C51 COMPILER V9.56.0.0   NRF24L01                                                          12/11/2018 12:17:53 PAGE 4   
+
+ 168          
+ 169          Description:
+ 170            This function initializes one nRF24L01 device to
+ 171            RX Mode, set RX address, writes RX payload width,
+ 172            select RF channel, datarate & LNA HCURR.
+ 173            After init, CE is toggled high, which means that
+ 174            this device is now ready to receive a datapacket.
+ 175          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  
+             -*  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+ 176          
+ 177          void RX_Mode(void) {
+ 178   1        CE = 0; 
+ 179   1        SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, RX_ADDRESS, RX_ADR_WIDTH); // Use the same address on the RX device
+             - as the TX device   
+ 180   1        
+ 181   1        SPI_RW_Reg(WRITE_REG + EN_AA, 0x01);   // Enable Auto.Ack:Pipe0
+ 182   1        SPI_RW_Reg(WRITE_REG + EN_RXADDR, 0x01); // Enable Pipe0
+ 183   1        SPI_RW_Reg(WRITE_REG + RF_CH, 40);     // Select RF channel 40
+ 184   1        SPI_RW_Reg(WRITE_REG + RX_PW_P0, RX_PLOAD_WIDTH); // Select same RX payload width as TX Payload width
+ 185   1        SPI_RW_Reg(WRITE_REG + RF_SETUP, 0x07); // TX_PWR:0dBm, Datarate:2Mbps, LNA:HCURR
+ 186   1        SPI_RW_Reg(WRITE_REG + CONFIG, 0x0f);   // Set PWR_UP bit, enable CRC(2 bytes) & Prim:RX. RX_DR enabled..
+ 187   1        CE = 1; // Set CE pin high to enable RX device
+ 188   1        Delay1ms(10); 
+ 189   1        //CE = 0; 
+ 190   1        //  This device is now ready to receive one packet of 16 bytes payload from a TX device sending to addres
+             -s
+ 191   1        //  '3443101001', with auto acknowledgment, retransmit count of 10, RF channel 40 and datarate = 2Mbps.
+ 192   1      }
+ 193          /**************************************************/
+ 194          
+ 195          /**************************************************
+ 196          Function: TX_Mode();
+ 197          Description:
+ 198            This function initializes one nRF24L01 device to
+ 199            TX mode, set TX address, set RX address for auto.ack,
+ 200            fill TX payload, select RF channel, datarate & TX pwr.
+ 201            PWR_UP is set, CRC(2 bytes) is enabled, & PRIM:TX.
+ 202          
+ 203            ToDo: One high pulse(>10us) on CE will now send this
+ 204            packet and expext an acknowledgment from the RX device.
+ 205          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  
+             -*  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+ 206          void TX_Mode(void) {
+ 207   1        CE = 0; 
+ 208   1      
+ 209   1        SPI_Write_Buf(WRITE_REG + TX_ADDR, TX_ADDRESS, TX_ADR_WIDTH);   // Writes TX_Address to nRF24L01
+ 210   1        SPI_Write_Buf(WRITE_REG + RX_ADDR_P0, RX_ADDRESS, RX_ADR_WIDTH); // RX_Addr0 same as TX_Adr for Auto.Ack
+ 211   1      
+ 212   1        SPI_RW_Reg(WRITE_REG + EN_AA, 0x01);    // Enable Auto.Ack:Pipe0
+ 213   1        SPI_RW_Reg(WRITE_REG + EN_RXADDR, 0x01); // Enable Pipe0
+ 214   1        SPI_RW_Reg(WRITE_REG + SETUP_RETR, 0x1a); // 500us + 86us, 10 retrans...
+ 215   1        SPI_RW_Reg(WRITE_REG + RF_CH, 40);      // Select RF channel 40
+ 216   1        SPI_RW_Reg(WRITE_REG + RF_SETUP, 0x07); // TX_PWR:0dBm, Datarate:2Mbps, LNA:HCURR
+ 217   1        SPI_RW_Reg(WRITE_REG + CONFIG, 0x0e);    // Set PWR_UP bit, enable CRC(2 bytes) & Prim:TX. MAX_RT & TX_DS 
+             -enabled..
+ 218   1        CE = 1; 
+ 219   1        //Delay1ms(10); 
+ 220   1        // CE = 0; 
+ 221   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+C51 COMPILER V9.56.0.0   NRF24L01                                                          12/11/2018 12:17:53 PAGE 5   
+
+   CODE SIZE        =    456    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     10      14
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

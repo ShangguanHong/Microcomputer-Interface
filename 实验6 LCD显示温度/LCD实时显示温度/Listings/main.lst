@@ -1,0 +1,94 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              11/29/2018 18:00:24 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "reg52.h"       //此文件中定义了单片机的一些特殊功能寄存器
+   2          #include "temp.h"
+   3          #include "lcd.h"
+   4          #include "stdio.h"
+   5          
+   6          typedef unsigned char u8;
+   7          
+   8          u8 DisplayData[5], tempIsNegative;
+   9          
+  10          /*******************************************************************************
+  11          * 函 数 名         : datapros()
+  12          * 函数功能         : 温度读取处理转换函数
+  13          * 输    入         : temp
+  14          * 输    出         : 无
+  15          *******************************************************************************/
+  16          
+  17          void datapros(int temp) {
+  18   1        float tp;
+  19   1        if(temp < 0) {//当温度值为负数
+  20   2          tempIsNegative = 1;
+  21   2          temp=temp-1;
+  22   2          temp=~temp;
+  23   2          tp=temp;
+  24   2          temp=tp*0.0625*100+0.5;
+  25   2      
+  26   2        } else {
+  27   2          tempIsNegative = 0;
+  28   2          tp=temp;
+  29   2          temp=tp*0.0625*100+0.5;
+  30   2        }
+  31   1        DisplayData[0] = temp / 10000;
+  32   1        DisplayData[1] = temp % 10000 / 1000;
+  33   1        DisplayData[2] = temp % 1000 / 100 ;
+  34   1        DisplayData[3] = temp % 100 / 10;
+  35   1        DisplayData[4] = temp % 10;
+  36   1      }
+  37          
+  38          /*******************************************************************************
+  39          * 函 数 名       : main
+  40          * 函数功能       : 主函数
+  41          * 输    入       : 无
+  42          * 输    出       : 无
+  43          *******************************************************************************/
+  44          void main() {
+  45   1        LcdInit();
+  46   1        Ds18b20SetAlarm(30, 0);
+  47   1        LcdWriteData('T');
+  48   1        LcdWriteData('e');
+  49   1        LcdWriteData('m');
+  50   1        LcdWriteData('p');
+  51   1        LcdWriteData(':');
+  52   1        while(1) {
+  53   2          LcdWriteCom(0x85);  //设置数据指针起点
+  54   2          datapros(Ds18b20ReadTemp());
+C51 COMPILER V9.56.0.0   MAIN                                                              11/29/2018 18:00:24 PAGE 2   
+
+  55   2          if(tempIsNegative) {
+  56   3            LcdWriteData('-');
+  57   3          }
+  58   2          LcdWriteData(DisplayData[0] + '0');
+  59   2          LcdWriteData(DisplayData[1] + '0');
+  60   2          LcdWriteData(DisplayData[2] + '0');
+  61   2          LcdWriteData('.');
+  62   2          LcdWriteData(DisplayData[3] + '0');
+  63   2          LcdWriteData(DisplayData[4] + '0');
+  64   2          LcdWriteData(0xDF);
+  65   2          LcdWriteData('C');
+  66   2          LcdWriteData(0x20);
+  67   2        }
+  68   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    305    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
