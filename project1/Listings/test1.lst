@@ -1,0 +1,40 @@
+C51 COMPILER V9.56.0.0   TEST1                                                             10/31/2018 21:25:35 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE TEST1
+OBJECT MODULE PLACED IN .\Objects\test1.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE test1.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\tes
+                    -t1.lst) TABS(2) OBJECT(.\Objects\test1.obj)
+
+line level    source
+
+   1          #include <AT89X51.H>
+   2          #include <stdio.h>
+   3          void main(void)
+   4          {
+   5   1        SCON = 0x50; // 串口方式1,允许接受
+   6   1        TMOD = 0x20; // 定时器1定时方式2
+   7   1        TCON = 0x40; // 设定时器1开始计数
+   8   1        TH1 = 0xE6; // 12MHz 1200波特率
+   9   1        TL1 = 0xE6;
+  10   1        TI = 1;
+  11   1        TR1 = 1; // 启动定时器
+  12   1        while(1)
+  13   1        {
+  14   2          printf ("Hello World!\n"); //显示 Hello World
+  15   2        }
+  16   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     30    ----
+   CONSTANT SIZE    =     14    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
