@@ -1,6 +1,0 @@
-".\Objects\lcd.obj",
-".\Objects\main.obj",
-".\Objects\nrf24l01.obj",
-".\Objects\XPT2046.obj" 
-TO ".\Objects\双向通信" 
-PRINT(".\Listings\双向通信.m51")

@@ -1,4 +1,0 @@
-".\Objects\XPT2046.obj",
-".\Objects\main.obj" 
-TO ".\Objects\AD转换及pwm控制" 
-PRINT(".\Listings\AD转换及pwm控制.m51")

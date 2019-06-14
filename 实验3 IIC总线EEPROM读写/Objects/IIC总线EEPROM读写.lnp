@@ -1,4 +1,0 @@
-".\Objects\i2c.obj",
-".\Objects\main.obj" 
-TO ".\Objects\IIC总线EEPROM读写" 
-PRINT(".\Listings\IIC总线EEPROM读写.m51")

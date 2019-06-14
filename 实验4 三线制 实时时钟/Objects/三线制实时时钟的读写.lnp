@@ -1,4 +1,0 @@
-".\Objects\ds1302.obj",
-".\Objects\main.obj" 
-TO ".\Objects\三线制实时时钟的读写" 
-PRINT(".\Listings\三线制实时时钟的读写.m51")

@@ -1,5 +1,0 @@
-".\Objects\lcd.obj",
-".\Objects\temp.obj",
-".\Objects\main.obj" 
-TO ".\Objects\LCD实时显示温度" 
-PRINT(".\Listings\LCD实时显示温度.m51")
